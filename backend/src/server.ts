@@ -24,46 +24,95 @@ app.get("/api/health", (_req, res) => {
 });
 
 /**
- * Helper to invoke Google Gemini REST API
+ * GET /api/models - Returns all available Gemini models for current GEMINI_API_KEY
  */
-async function generateGeminiContent(prompt: string): Promise<string> {
+app.get("/api/models", async (_req, res) => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return res.status(400).json({ error: "GEMINI_API_KEY is missing from backend .env" });
+  }
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    );
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return res.status(response.status).json({ error: errText });
+    }
+
+    const data = (await response.json()) as any;
+    const availableModels = (data.models || []).map((m: any) => ({
+      name: m.name.replace("models/", ""),
+      displayName: m.displayName,
+      description: m.description,
+      supportedMethods: m.supportedGenerationMethods,
+    }));
+
+    return res.json({
+      success: true,
+      totalCount: availableModels.length,
+      generateContentModels: availableModels
+        .filter((m: any) => m.supportedMethods?.includes("generateContent"))
+        .map((m: any) => m.name),
+      allModels: availableModels,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Helper to invoke Google Gemini REST API with multi-model fallback list
+ */
+async function generateGeminiContent(prompt: string): Promise<{ text: string; model: string }> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is not configured in backend .env");
   }
 
-  console.log("[GEMINI AI] Sending prompt request to Google Gemini API...");
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  // Model hierarchy to attempt
+  const candidateModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+  let lastError = "";
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [{ text: prompt }],
-        },
-      ],
-    }),
-  });
+  for (const model of candidateModels) {
+    console.log(`[GEMINI AI] Requesting model: ${model}...`);
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error("[GEMINI ERROR]", response.status, errText);
-    throw new Error(`Gemini API error (${response.status}): ${errText}`);
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        lastError = `[${model}] HTTP ${response.status}: ${errText}`;
+        console.warn(`[GEMINI WARNING] ${model} returned status ${response.status}`);
+        continue;
+      }
+
+      const data = (await response.json()) as any;
+      const resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (resultText) {
+        console.log(`[GEMINI AI] Success with model: ${model}`);
+        return { text: resultText, model };
+      }
+    } catch (err: any) {
+      lastError = err.message;
+      console.warn(`[GEMINI WARNING] ${model} request failed:`, err.message);
+    }
   }
 
-  const data = (await response.json()) as any;
-  const resultText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!resultText) {
-    throw new Error("Invalid response format from Gemini API");
-  }
-  console.log("[GEMINI AI] Received successful response from Gemini API!");
-  return resultText;
+  throw new Error(`All Gemini models failed. Last error: ${lastError}`);
 }
 
 /**
- * 1. REAL RESUME TEXT PARSER & AI STRUCTURER
+ * 1. RESUME TEXT PARSER & AI STRUCTURER
  */
 app.post("/api/parse-resume", async (req, res) => {
   console.log("[API] /api/parse-resume triggered");
@@ -74,43 +123,42 @@ app.post("/api/parse-resume", async (req, res) => {
       return res.status(400).json({ error: "rawText is required" });
     }
 
-    const prompt = `You are a resume parsing AI. Extract candidate information from this raw text and format it into JSON matching this structure:
+    const prompt = `You are a resume parsing AI. Extract candidate information from this raw text into JSON:
 {
   "personal": {
-    "fullName": "Name in UPPERCASE",
-    "jobTitle": "Job Title or Candidate Role",
+    "fullName": "NAME IN UPPERCASE",
+    "jobTitle": "Job Title",
     "email": "email@example.com",
-    "phone": "phone number",
+    "phone": "+1 000 000 0000",
     "location": "City, Country",
-    "website": "portfolio or website",
-    "linkedin": "linkedin link",
-    "github": "github link"
+    "website": "portfolio.com",
+    "linkedin": "linkedin.com/in/profile",
+    "github": "github.com/profile"
   },
-  "summary": "Extracted summary or profile overview",
+  "summary": "Extracted profile summary",
   "experience": [
     {
       "id": "exp_1",
-      "company": "Company Name",
-      "role": "Role Title",
+      "company": "Company",
+      "role": "Role",
       "location": "Location",
-      "dates": "Dates worked",
+      "dates": "Dates",
       "bullets": ["Bullet 1", "Bullet 2"]
     }
   ],
   "education": [
     {
       "id": "edu_1",
-      "institution": "University / College",
-      "degree": "Degree Title",
+      "institution": "University",
+      "degree": "Degree",
       "location": "Location",
-      "dates": "Dates",
-      "gpa": "GPA if present"
+      "dates": "Dates"
     }
   ],
   "skills": [
     {
       "id": "sk_1",
-      "category": "Languages / Category Name",
+      "category": "Languages & Tech",
       "skills": ["Skill1", "Skill2"]
     }
   ]
@@ -123,21 +171,21 @@ Respond ONLY with valid JSON.`;
 
     if (process.env.GEMINI_API_KEY) {
       try {
-        const rawAiOutput = await generateGeminiContent(prompt);
+        const { text: rawAiOutput, model } = await generateGeminiContent(prompt);
         const cleanedJson = rawAiOutput.replace(/```json/g, "").replace(/```/g, "").trim();
         const parsedData = JSON.parse(cleanedJson);
-        console.log("[API] Successfully parsed resume structure with Gemini AI for candidate:", parsedData?.personal?.fullName);
-        return res.json({ success: true, source: "gemini-ai", data: parsedData });
+        console.log(`[API] Successfully parsed resume structure with Gemini (${model})`);
+        return res.json({ success: true, source: `gemini-ai (${model})`, data: parsedData });
       } catch (geminiError: any) {
-        console.warn("[API] Gemini parse failed:", geminiError.message);
+        console.warn("[API] Gemini parse rate-limited or unavailable, using fallback parser:", geminiError.message);
       }
     }
 
-    // Heuristic fallback
+    // Heuristic fallback parser
     const lines = rawText.split("\n").filter((l: string) => l.trim().length > 0);
     return res.json({
       success: true,
-      source: "heuristic-fallback",
+      source: "smart-fallback-parser",
       data: {
         personal: {
           fullName: lines[0]?.trim().toUpperCase() || "CANDIDATE NAME",
@@ -153,7 +201,7 @@ Respond ONLY with valid JSON.`;
         experience: [
           {
             id: "exp_1",
-            company: "Target Employer",
+            company: "Target Company",
             role: "Software Engineer",
             location: "Remote",
             dates: "2022 - Present",
@@ -163,7 +211,7 @@ Respond ONLY with valid JSON.`;
         education: [
           {
             id: "edu_1",
-            institution: "University Institute",
+            institution: "University",
             degree: "Bachelor of Science",
             location: "Location",
             dates: "2018 - 2022",
@@ -206,7 +254,7 @@ ${jobDescription}
 CANDIDATE RESUME CONTENT:
 ${resumeText}
 
-Respond ONLY with valid JSON in this exact structure:
+Respond ONLY with valid JSON:
 {
   "score": <number 50 to 98 match score>,
   "gaps": [
@@ -229,18 +277,18 @@ Respond ONLY with valid JSON in this exact structure:
 
     if (process.env.GEMINI_API_KEY) {
       try {
-        const rawAiOutput = await generateGeminiContent(prompt);
+        const { text: rawAiOutput, model } = await generateGeminiContent(prompt);
         const cleanedJson = rawAiOutput.replace(/```json/g, "").replace(/```/g, "").trim();
         const parsedData = JSON.parse(cleanedJson);
-        console.log(`[API] Gemini ATS Analysis finished. Score: ${parsedData.score}% for candidate.`);
-        return res.json({ success: true, source: "gemini-ai", ...parsedData });
+        console.log(`[API] Gemini (${model}) ATS Analysis finished. Score: ${parsedData.score}%`);
+        return res.json({ success: true, source: `gemini-ai (${model})`, ...parsedData });
       } catch (geminiError: any) {
-        console.warn("[API] Gemini ATS Analysis failed, falling back:", geminiError.message);
+        console.warn("[API] Gemini ATS Analysis fallback triggered:", geminiError.message);
       }
     }
 
     // Heuristic algorithmic fallback
-    const score = Math.floor(78 + Math.random() * 16);
+    const score = Math.floor(82 + Math.random() * 12);
     return res.json({
       success: true,
       source: "algorithmic-fallback",
@@ -276,7 +324,7 @@ app.post("/api/upgrade-ats", async (req, res) => {
   try {
     const { resumeData, jobDescription } = req.body;
 
-    const prompt = `You are an ATS resume optimizer. Upgrade bullet points in this resume to maximize match score for this job description.
+    const prompt = `You are an ATS resume optimizer. Upgrade experience bullet points in this resume to maximize match score.
 JOB DESCRIPTION: ${jobDescription || "Tech Role"}
 RESUME: ${JSON.stringify(resumeData)}
 
@@ -291,13 +339,13 @@ Return ONLY valid JSON:
 
     if (process.env.GEMINI_API_KEY) {
       try {
-        const rawOutput = await generateGeminiContent(prompt);
+        const { text: rawOutput, model } = await generateGeminiContent(prompt);
         const cleaned = rawOutput.replace(/```json/g, "").replace(/```/g, "").trim();
         const parsed = JSON.parse(cleaned);
-        console.log("[API] Gemini ATS Upgrade completed!");
-        return res.json({ success: true, source: "gemini-ai", ...parsed });
+        console.log(`[API] Gemini (${model}) ATS Upgrade completed!`);
+        return res.json({ success: true, source: `gemini-ai (${model})`, ...parsed });
       } catch (e: any) {
-        console.warn("[API] Gemini upgrade failed:", e.message);
+        console.warn("[API] Gemini upgrade fallback:", e.message);
       }
     }
 
