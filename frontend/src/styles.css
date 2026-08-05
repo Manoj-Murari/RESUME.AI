@@ -1,4 +1,4 @@
-@import "tailwindcss" source(none);
+@import "tailwindcss";
 @source "../src";
 @import "tw-animate-css";
 
@@ -186,3 +186,164 @@
     color: var(--color-foreground);
   }
 }
+
+/* --------------------------------------------------
+   RESUME TEMPLATE OVERRIDES & ENFORCED FONTS/SPACING
+   -------------------------------------------------- */
+
+/* 1. JAKE / FAANG CLASSIC & EXECUTIVE TEMPLATE (Enforced Serif style) */
+.jake-template,
+.jake-template *,
+.executive-template,
+.executive-template * {
+  font-family: "Times New Roman", Times, Georgia, serif !important;
+  color: #000000 !important;
+}
+
+.jake-template input,
+.jake-template textarea,
+.executive-template input,
+.executive-template textarea {
+  font-family: "Times New Roman", Times, Georgia, serif !important;
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  padding: 0 !important;
+  color: #000000 !important;
+  resize: none !important;
+  width: 100% !important;
+}
+
+.jake-template input:focus,
+.jake-template textarea:focus,
+.executive-template input:focus,
+.executive-template textarea:focus {
+  background-color: #f5f4ef !important;
+  box-shadow: none !important;
+}
+
+.jake-template ul,
+.jake-template li,
+.executive-template ul,
+.executive-template li {
+  font-family: "Times New Roman", Times, Georgia, serif !important;
+  color: #111111 !important;
+  line-height: 1.4 !important;
+  font-size: 11.5px !important;
+}
+
+.jake-template h2,
+.executive-template h2 {
+  font-family: "Times New Roman", Times, Georgia, serif !important;
+  font-size: 12.5px !important;
+  font-weight: bold !important;
+  border-bottom: 1px solid #000000 !important;
+  letter-spacing: 0.08em !important;
+  margin-top: 14px !important;
+  margin-bottom: 6px !important;
+  padding-bottom: 2px !important;
+}
+
+.jake-template .font-mono,
+.executive-template .font-mono {
+  font-family: "Times New Roman", Times, Georgia, serif !important;
+  font-size: 11px !important;
+}
+
+/* 2. AUSTERE TEMPLATE (Clean Minimalist Monospace) */
+.austere-template,
+.austere-template * {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  color: #1a1a1a !important;
+}
+
+.austere-template input,
+.austere-template textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  color: #1a1a1a !important;
+  resize: none !important;
+}
+
+.austere-template h2 {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  border-bottom: 1px solid #eaeae8 !important;
+  color: #8B2626 !important;
+  font-size: 11px !important;
+  font-weight: bold !important;
+  letter-spacing: 0.1em !important;
+  margin-top: 16px !important;
+  margin-bottom: 8px !important;
+  padding-bottom: 2px !important;
+}
+
+/* 3. ALEX WEBB TEMPLATE (Elegant Emerald Sans-Serif style) */
+.alex-webb-template,
+.alex-webb-template * {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif !important;
+  color: #064e3b !important;
+}
+
+.alex-webb-template input,
+.alex-webb-template textarea {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif !important;
+  background-color: transparent !important;
+  border: none !important;
+  outline: none !important;
+  color: #064e3b !important;
+  resize: none !important;
+}
+
+.alex-webb-template h2 {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: bold !important;
+  border-bottom: 2px solid #059669 !important;
+  color: #047857 !important;
+  letter-spacing: 0.08em !important;
+  margin-top: 16px !important;
+  margin-bottom: 8px !important;
+  padding-bottom: 3px !important;
+}
+
+/* --------------------------------------------------
+   PRINT OPTIMIZATIONS (Clean PDF Exports)
+   -------------------------------------------------- */
+@media print {
+  body, html {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Hide headers, sidebars, buttons, and logs */
+  nav, aside, button, .print\:hidden {
+    display: none !important;
+  }
+
+  /* Make containers expand to full-screen page limits */
+  .flex-1.flex.overflow-hidden {
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .flex-1.flex.flex-col {
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .jake-template,
+  .executive-template,
+  .austere-template,
+  .alex-webb-template {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+

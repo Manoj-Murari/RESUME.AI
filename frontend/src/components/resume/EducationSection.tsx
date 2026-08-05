@@ -35,38 +35,51 @@ export const EducationSection: React.FC<Props> = ({
       <div className="space-y-3">
         {items.map((edu) => (
           <div key={edu.id}>
-            <div className="flex justify-between items-baseline text-xs font-sans">
-              <div className="flex items-center gap-1.5 flex-wrap font-bold text-neutral-900">
-                <input
-                  type="text"
-                  value={edu.institution}
-                  onChange={(e) => onUpdate?.(edu.id, "institution", e.target.value)}
-                  readOnly={!editable}
-                  className="bg-transparent focus:outline-none focus:bg-neutral-50 px-0.5 font-bold"
-                />
-                <span className="text-neutral-400 font-normal">•</span>
-                <input
-                  type="text"
-                  value={edu.degree}
-                  onChange={(e) => onUpdate?.(edu.id, "degree", e.target.value)}
-                  readOnly={!editable}
-                  className="bg-transparent focus:outline-none focus:bg-neutral-50 px-0.5 italic font-medium text-neutral-800"
-                />
+            {!editable ? (
+              <div className="flex justify-between items-baseline text-xs">
+                <div className="flex items-center gap-1.5 flex-wrap font-bold text-neutral-900">
+                  <span className="font-bold">{edu.institution}</span>
+                  <span className="text-neutral-400 font-normal">•</span>
+                  <span className="italic font-medium text-neutral-800">{edu.degree}</span>
+                </div>
+                <div className="text-[11px] text-neutral-600 shrink-0">
+                  {edu.dates}
+                </div>
               </div>
+            ) : (
+              <div className="flex justify-between items-baseline text-xs font-sans">
+                <div className="flex items-center gap-1.5 flex-wrap font-bold text-neutral-900">
+                  <input
+                    type="text"
+                    value={edu.institution}
+                    onChange={(e) => onUpdate?.(edu.id, "institution", e.target.value)}
+                    readOnly={!editable}
+                    className="bg-transparent focus:outline-none focus:bg-neutral-50 px-0.5 font-bold"
+                  />
+                  <span className="text-neutral-400 font-normal">•</span>
+                  <input
+                    type="text"
+                    value={edu.degree}
+                    onChange={(e) => onUpdate?.(edu.id, "degree", e.target.value)}
+                    readOnly={!editable}
+                    className="bg-transparent focus:outline-none focus:bg-neutral-50 px-0.5 italic font-medium text-neutral-800"
+                  />
+                </div>
 
-              <div className="flex items-center gap-1 text-[11px] font-mono text-neutral-600 shrink-0">
-                <input
-                  type="text"
-                  value={edu.dates}
-                  onChange={(e) => onUpdate?.(edu.id, "dates", e.target.value)}
-                  readOnly={!editable}
-                  className="bg-transparent focus:outline-none focus:bg-neutral-50 px-0.5 text-right"
-                />
+                <div className="flex items-center gap-1 text-[11px] font-mono text-neutral-600 shrink-0">
+                  <input
+                    type="text"
+                    value={edu.dates}
+                    onChange={(e) => onUpdate?.(edu.id, "dates", e.target.value)}
+                    readOnly={!editable}
+                    className="bg-transparent focus:outline-none focus:bg-neutral-50 px-0.5 text-right"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             {edu.coursework && edu.coursework.length > 0 && (
-              <div className="mt-1 text-[11px] text-neutral-700 font-sans leading-normal">
+              <div className="mt-1 text-[11px] text-neutral-700 leading-normal">
                 <span className="font-semibold text-neutral-900">Relevant Coursework: </span>
                 {edu.coursework.join(", ")}
               </div>

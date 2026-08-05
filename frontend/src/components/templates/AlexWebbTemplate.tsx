@@ -18,7 +18,7 @@ export const AlexWebbTemplate: React.FC<Props> = ({
   onUpdateData,
 }) => {
   return (
-    <div className="w-full bg-white text-emerald-950 font-sans p-10 print:p-0 shadow-sm border border-emerald-100">
+    <div className="alex-webb-template w-full bg-white text-emerald-950 p-10 print:p-0 shadow-sm border border-emerald-100">
       <ResumeHeader
         personal={data.personal}
         layout="left"

@@ -54,7 +54,7 @@ export const JakeFaangTemplate: React.FC<Props> = ({
   };
 
   return (
-    <div className="w-full bg-white text-neutral-900 font-sans p-10 print:p-0 shadow-sm border border-neutral-200">
+    <div className="jake-template w-full bg-white text-black p-10 print:p-0 shadow-sm border border-neutral-200">
       <ResumeHeader
         personal={data.personal}
         layout="centered"

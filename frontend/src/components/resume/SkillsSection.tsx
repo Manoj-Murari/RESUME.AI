@@ -32,25 +32,31 @@ export const SkillsSection: React.FC<Props> = ({
         {title}
       </h2>
 
-      <div className="space-y-1 text-xs text-neutral-800 font-sans leading-relaxed">
+      <div className="space-y-1 text-xs text-neutral-800 leading-relaxed">
         {categories.map((cat) => (
           <div key={cat.id} className="flex flex-wrap items-baseline gap-1">
             <span className="font-bold text-neutral-900 min-w-[90px]">
               {cat.category}:
             </span>
-            <input
-              type="text"
-              value={cat.skills.join(", ")}
-              onChange={(e) =>
-                onUpdateCategory?.(
-                  cat.id,
-                  cat.category,
-                  e.target.value.split(",").map((s) => s.trim())
-                )
-              }
-              readOnly={!editable}
-              className="flex-1 bg-transparent focus:outline-none focus:bg-neutral-50 px-1 text-xs text-neutral-800"
-            />
+            {!editable ? (
+              <span className="text-neutral-800">
+                {cat.skills.join(", ")}
+              </span>
+            ) : (
+              <input
+                type="text"
+                value={cat.skills.join(", ")}
+                onChange={(e) =>
+                  onUpdateCategory?.(
+                    cat.id,
+                    cat.category,
+                    e.target.value.split(",").map((s) => s.trim())
+                  )
+                }
+                readOnly={!editable}
+                className="flex-1 bg-transparent focus:outline-none focus:bg-neutral-50 px-1 text-xs text-neutral-800"
+              />
+            )}
           </div>
         ))}
       </div>

@@ -15,6 +15,28 @@ export interface AtsAnalysisResponse {
   }[];
 }
 
+/**
+ * Upload PDF or Word binary file to backend for server-side PDF extraction & Gemini parsing
+ */
+export async function requestParseResumeFile(file: File): Promise<any> {
+  console.log(`[FRONTEND LOG 1/3] Uploading binary file "${file.name}" to /api/upload-parse-resume...`);
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_BASE_URL}/upload-parse-resume`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Server returned status ${response.status}`);
+  }
+
+  const data = await response.json();
+  console.log("[FRONTEND LOG 2/3] Backend extracted & structured PDF resume:", data);
+  return data;
+}
+
 export async function requestParseResume(rawText: string): Promise<any> {
   console.log("[FRONTEND LOG 1/3] Sending raw resume text to backend /api/parse-resume...");
   const response = await fetch(`${API_BASE_URL}/parse-resume`, {

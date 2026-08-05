@@ -17,7 +17,7 @@ export const ExecutiveTemplate: React.FC<Props> = ({
   onUpdateData,
 }) => {
   return (
-    <div className="w-full bg-white text-neutral-900 font-serif p-12 print:p-0 shadow-sm border border-neutral-300">
+    <div className="executive-template w-full bg-white text-neutral-900 p-12 print:p-0 shadow-sm border border-neutral-300">
       <ResumeHeader
         personal={data.personal}
         layout="centered"

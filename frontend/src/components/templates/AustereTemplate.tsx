@@ -40,7 +40,7 @@ export const AustereTemplate: React.FC<Props> = ({
   };
 
   return (
-    <div className="w-full bg-white text-[#1A1A1A] font-sans p-12 print:p-0 shadow-sm border border-[#E5E3DC]">
+    <div className="austere-template w-full bg-white text-[#1A1A1A] p-12 print:p-0 shadow-sm border border-[#E5E3DC]">
       <ResumeHeader
         personal={data.personal}
         layout="left"

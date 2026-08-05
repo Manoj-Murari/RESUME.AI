@@ -8,6 +8,8 @@ interface Props {
   onUpdate?: (field: keyof PersonalDetails, value: string) => void;
 }
 
+export const Route = null; // helper placeholder
+
 export const ResumeHeader: React.FC<Props> = ({
   personal,
   layout = "centered",
@@ -26,6 +28,52 @@ export const ResumeHeader: React.FC<Props> = ({
     personal.github,
     personal.website,
   ].filter(Boolean);
+
+  if (!editable) {
+    if (layout === "left") {
+      return (
+        <header className="mb-6 pb-4 border-b border-neutral-300">
+          <h1 className="text-2xl font-bold tracking-tight text-neutral-900 px-1">
+            {personal.fullName}
+          </h1>
+          {personal.jobTitle && (
+            <div className="text-sm font-semibold text-neutral-600 tracking-wide uppercase px-1 mt-0.5">
+              {personal.jobTitle}
+            </div>
+          )}
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-neutral-600">
+            {contactLinks.map((item, idx) => (
+              <React.Fragment key={idx}>
+                {idx > 0 && <span className="text-neutral-400">|</span>}
+                <span>{item}</span>
+              </React.Fragment>
+            ))}
+          </div>
+        </header>
+      );
+    }
+
+    return (
+      <header className="text-center mb-6 border-b border-transparent">
+        <h1 className="text-2xl font-extrabold tracking-tight text-neutral-900 text-center px-1">
+          {personal.fullName}
+        </h1>
+        {personal.jobTitle && (
+          <div className="text-xs font-semibold text-neutral-500 tracking-widest uppercase text-center px-1 mt-1 block">
+            {personal.jobTitle}
+          </div>
+        )}
+        <div className="mt-2 flex flex-wrap justify-center items-center gap-x-2 gap-y-1 text-[11px] text-neutral-700">
+          {contactLinks.map((item, idx) => (
+            <React.Fragment key={idx}>
+              {idx > 0 && <span className="text-neutral-400 font-normal">|</span>}
+              <span className="hover:text-neutral-900 transition-colors">{item}</span>
+            </React.Fragment>
+          ))}
+        </div>
+      </header>
+    );
+  }
 
   if (layout === "left") {
     return (

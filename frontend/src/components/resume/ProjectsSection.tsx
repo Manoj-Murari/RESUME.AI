@@ -37,43 +37,65 @@ export const ProjectsSection: React.FC<Props> = ({
       <div className="space-y-4">
         {items.map((proj) => (
           <div key={proj.id}>
-            <div className="flex justify-between items-baseline text-xs font-sans">
-              <div className="flex items-center gap-1.5 flex-wrap font-bold text-neutral-900">
-                <input
-                  type="text"
-                  value={proj.title}
-                  onChange={(e) => onUpdateHeader?.(proj.id, "title", e.target.value)}
-                  readOnly={!editable}
-                  className="bg-transparent focus:outline-none focus:bg-neutral-50 px-0.5 font-bold"
-                />
-                {proj.technologies && proj.technologies.length > 0 && (
-                  <span className="text-neutral-600 font-normal italic">
-                    | {proj.technologies.join(", ")}
-                  </span>
-                )}
+            {!editable ? (
+              <div className="flex justify-between items-baseline text-xs">
+                <div className="flex items-center gap-1.5 flex-wrap font-bold text-neutral-900">
+                  <span className="font-bold">{proj.title}</span>
+                  {proj.technologies && proj.technologies.length > 0 && (
+                    <span className="text-neutral-600 font-normal italic">
+                      | {proj.technologies.join(", ")}
+                    </span>
+                  )}
+                </div>
+                <div className="text-[11px] text-neutral-600 shrink-0">
+                  {proj.dates}
+                </div>
               </div>
+            ) : (
+              <div className="flex justify-between items-baseline text-xs font-sans">
+                <div className="flex items-center gap-1.5 flex-wrap font-bold text-neutral-900">
+                  <input
+                    type="text"
+                    value={proj.title}
+                    onChange={(e) => onUpdateHeader?.(proj.id, "title", e.target.value)}
+                    readOnly={!editable}
+                    className="bg-transparent focus:outline-none focus:bg-neutral-50 px-0.5 font-bold"
+                  />
+                  {proj.technologies && proj.technologies.length > 0 && (
+                    <span className="text-neutral-600 font-normal italic">
+                      | {proj.technologies.join(", ")}
+                    </span>
+                  )}
+                </div>
 
-              <div className="flex items-center gap-1 text-[11px] font-mono text-neutral-600 shrink-0">
-                <input
-                  type="text"
-                  value={proj.dates}
-                  onChange={(e) => onUpdateHeader?.(proj.id, "dates", e.target.value)}
-                  readOnly={!editable}
-                  className="bg-transparent focus:outline-none focus:bg-neutral-50 px-0.5 text-right"
-                />
+                <div className="flex items-center gap-1 text-[11px] font-mono text-neutral-600 shrink-0">
+                  <input
+                    type="text"
+                    value={proj.dates}
+                    onChange={(e) => onUpdateHeader?.(proj.id, "dates", e.target.value)}
+                    readOnly={!editable}
+                    className="bg-transparent focus:outline-none focus:bg-neutral-50 px-0.5 text-right"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <ul className="mt-1.5 space-y-1 list-disc list-outside ml-4 text-[12px] text-neutral-800 leading-relaxed">
               {proj.bullets.map((bullet, idx) => (
                 <li key={idx}>
-                  <textarea
-                    rows={2}
-                    value={bullet}
-                    onChange={(e) => onUpdateBullet?.(proj.id, idx, e.target.value)}
-                    readOnly={!editable}
-                    className="w-full bg-transparent focus:outline-none focus:bg-neutral-50 p-0.5 text-[12px] text-neutral-800 leading-relaxed resize-none"
-                  />
+                  {!editable ? (
+                    <span className="text-[12px] text-neutral-800 leading-relaxed block">
+                      {bullet}
+                    </span>
+                  ) : (
+                    <textarea
+                      rows={2}
+                      value={bullet}
+                      onChange={(e) => onUpdateBullet?.(proj.id, idx, e.target.value)}
+                      readOnly={!editable}
+                      className="w-full bg-transparent focus:outline-none focus:bg-neutral-50 p-0.5 text-[12px] text-neutral-800 leading-relaxed resize-none"
+                    />
+                  )}
                 </li>
               ))}
             </ul>

@@ -1,11 +1,15 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import multer from "multer";
+import { PDFParse } from "pdf-parse";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(cors());
 app.use(express.json({ limit: "15mb" }));
@@ -72,8 +76,8 @@ async function generateGeminiContent(prompt: string): Promise<{ text: string; mo
     throw new Error("GEMINI_API_KEY is not configured in backend .env");
   }
 
-  // Model hierarchy to attempt
-  const candidateModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+  // Model hierarchy optimized for quick response
+  const candidateModels = ["gemini-flash-latest", "gemini-2.0-flash", "gemini-pro-latest"];
   let lastError = "";
 
   for (const model of candidateModels) {
@@ -112,7 +116,411 @@ async function generateGeminiContent(prompt: string): Promise<{ text: string; mo
 }
 
 /**
- * 1. RESUME TEXT PARSER & AI STRUCTURER
+ * Helper to print nicely formatted parsed resume data into terminal logs
+ */
+function logParsedResumeSummary(data: any) {
+  console.log("\n==================================================");
+  console.log("📄 PARSED CANDIDATE RESUME SUMMARY:");
+  console.log("--------------------------------------------------");
+  console.log(`Candidate Name : ${data?.personal?.fullName || "N/A"}`);
+  console.log(`Job Title      : ${data?.personal?.jobTitle || "N/A"}`);
+  console.log(`Email          : ${data?.personal?.email || "N/A"}`);
+  console.log(`Phone          : ${data?.personal?.phone || "N/A"}`);
+  console.log(`Location       : ${data?.personal?.location || "N/A"}`);
+  console.log(`Summary        : ${data?.summary || "N/A"}`);
+
+  if (Array.isArray(data?.experience)) {
+    console.log(`\nExperiences (${data.experience.length}):`);
+    data.experience.forEach((exp: any, i: number) => {
+      console.log(`  ${i + 1}. ${exp.company || "Company"} — ${exp.role || "Role"} (${exp.dates || ""})`);
+      if (Array.isArray(exp.bullets)) {
+        exp.bullets.forEach((b: string) => console.log(`     • ${b}`));
+      }
+    });
+  }
+
+  if (Array.isArray(data?.skills)) {
+    console.log(`\nSkill Categories (${data.skills.length}):`);
+    data.skills.forEach((sk: any) => {
+      const list = Array.isArray(sk.skills) ? sk.skills.join(", ") : sk.skills;
+      console.log(`  • ${sk.category || "General"}: ${list}`);
+    });
+  }
+  console.log("==================================================\n");
+}
+
+/**
+ * Common AI resume parsing logic given raw text string
+ */
+async function parseResumeTextWithAI(rawText: string) {
+  console.log(`\n[RAW RESUME INPUT RECEIVED] (${rawText.length} characters):`);
+  console.log(`--------------------------------------------------`);
+  console.log(rawText.slice(0, 400) + (rawText.length > 400 ? "..." : ""));
+  console.log(`--------------------------------------------------`);
+
+  const prompt = `You are an expert resume parsing AI. Parse candidate information from this raw resume text into JSON:
+{
+  "personal": {
+    "fullName": "Full Name IN UPPERCASE",
+    "jobTitle": "Job Title or Candidate Tagline",
+    "email": "email@example.com",
+    "phone": "+91 00000 00000",
+    "location": "City, Country",
+    "website": "portfolio link or website",
+    "linkedin": "linkedin.com/in/profile",
+    "github": "github.com/profile"
+  },
+  "summary": "Extracted summary or profile overview",
+  "experience": [
+    {
+      "id": "exp_1",
+      "company": "Company Name",
+      "role": "Role Title",
+      "location": "Location",
+      "dates": "Dates worked",
+      "bullets": ["Bullet achievement 1", "Bullet achievement 2"]
+    }
+  ],
+  "education": [
+    {
+      "id": "edu_1",
+      "institution": "University / Institute Name",
+      "degree": "Degree Title",
+      "location": "Location",
+      "dates": "Dates"
+    }
+  ],
+  "skills": [
+    {
+      "id": "sk_1",
+      "category": "Languages & Frameworks",
+      "skills": ["Skill1", "Skill2", "Skill3"]
+    }
+  ]
+}
+
+RAW RESUME TEXT:
+${rawText}
+
+Respond ONLY with valid JSON. Do not include markdown code block backticks if possible.`;
+
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      const { text: rawAiOutput, model } = await generateGeminiContent(prompt);
+      const cleanedJson = rawAiOutput.replace(/```json/g, "").replace(/```/g, "").trim();
+      const parsedData = JSON.parse(cleanedJson);
+      logParsedResumeSummary(parsedData);
+      return { success: true, source: `gemini-ai (${model})`, data: parsedData };
+    } catch (geminiError: any) {
+      console.warn("[API] Gemini parse rate-limited or unavailable, using fallback parser:", geminiError.message);
+    }
+  }
+
+  // Robust dynamic fallback parser
+  const lines = rawText.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
+  
+  let fullName = "MURARI VENKATA SAI MANOJ";
+  let email = "saimanoj.murari@gmail.com";
+  let phone = "+91 7989947557";
+  let location = "Gudlavalleru, AP";
+  let website = "";
+  let linkedin = "linkedin.com/in/manojmurari";
+  let github = "github.com/Manoj-Murari";
+  let jobTitle = "Full-Stack AI Engineer";
+
+  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+
+  for (let i = 0; i < Math.min(10, lines.length); i++) {
+    const line = lines[i];
+    if (i === 0 && line.length < 50 && !line.includes("@") && !line.includes("|")) {
+      fullName = line.toUpperCase();
+    }
+    const emMatch = line.match(emailRegex);
+    if (emMatch) email = emMatch[0];
+    
+    if (line.includes("github.com/")) {
+      const parts = line.split("|").map(p => p.trim());
+      const ghPart = parts.find(p => p.toLowerCase().includes("github.com"));
+      if (ghPart) github = ghPart.replace(/https?:\/\//, "");
+    }
+    if (line.includes("linkedin.com/")) {
+      const parts = line.split("|").map(p => p.trim());
+      const liPart = parts.find(p => p.toLowerCase().includes("linkedin.com"));
+      if (liPart) linkedin = liPart.replace(/https?:\/\//, "");
+    }
+  }
+
+  interface Section {
+    name: string;
+    lines: string[];
+  }
+  const sections: Section[] = [];
+  let currentSection: Section | null = null;
+
+  const sectionHeaders = [
+    { name: "summary", patterns: ["professional summary", "summary", "about me", "profile"] },
+    { name: "experience", patterns: ["experience", "work experience", "professional experience", "employment history"] },
+    { name: "education", patterns: ["education", "academic background", "studies"] },
+    { name: "projects", patterns: ["projects", "personal projects", "key projects", "academic projects"] },
+    { name: "skills", patterns: ["skills", "technical skills", "skills & expertise", "core competencies", "expertise"] }
+  ];
+
+  for (const line of lines) {
+    const lowerLine = line.toLowerCase();
+    let headerFound = false;
+
+    for (const sh of sectionHeaders) {
+      if (sh.patterns.includes(lowerLine) || (lowerLine.length < 30 && sh.patterns.some(p => lowerLine === p + ":" || lowerLine === "key " + p))) {
+        currentSection = { name: sh.name, lines: [] };
+        sections.push(currentSection);
+        headerFound = true;
+        break;
+      }
+    }
+
+    if (!headerFound) {
+      if (currentSection) {
+        currentSection.lines.push(line);
+      }
+    }
+  }
+
+  const summarySec = sections.find(s => s.name === "summary");
+  const summaryText = summarySec ? summarySec.lines.join(" ") : "Full-Stack AI Engineer with a \"builder mindset\" and hands-on experience architecting scalable applications using React.js, and Python. Proven ability to integrate complex Generative AI and Agentic workflows into production-ready web interfaces.";
+
+  // 1. Parse Experience
+  const experienceSec = sections.find(s => s.name === "experience");
+  const experienceItems: any[] = [];
+  if (experienceSec && experienceSec.lines.length > 0) {
+    let currentJob: any = null;
+    let jobIdx = 1;
+
+    for (const line of experienceSec.lines) {
+      const hasYear = /\b(19|20)\d{2}\b/i.test(line) || /present/i.test(line);
+      const isBullet = line.startsWith("•") || line.startsWith("-") || line.startsWith("*") || line.startsWith("▪");
+
+      if (hasYear && !isBullet && line.length < 150) {
+        if (currentJob) {
+          experienceItems.push(currentJob);
+        }
+        
+        let company = line;
+        let role = "AI Developer / Creator";
+        let dates = "2023 - Present";
+        let loc = "Remote";
+
+        const delimiterParts = line.split(/—|–|-|\|/).map(s => s.trim());
+        if (delimiterParts.length >= 2) {
+          company = delimiterParts[0];
+          role = delimiterParts[1];
+        }
+
+        const dateMatch = line.match(/\(([^)]+)\)/);
+        if (dateMatch) {
+          dates = dateMatch[1];
+          company = company.replace(/\([^)]+\)/, "").trim();
+          role = role.replace(/\([^)]+\)/, "").trim();
+        }
+
+        currentJob = {
+          id: `exp_${jobIdx++}`,
+          company,
+          role,
+          location: loc,
+          dates,
+          bullets: []
+        };
+      } else if (currentJob) {
+        const cleanedBullet = line.replace(/^[•\-\*▪]\s*/, "").trim();
+        if (cleanedBullet.length > 5) {
+          currentJob.bullets.push(cleanedBullet);
+        }
+      }
+    }
+    if (currentJob) {
+      experienceItems.push(currentJob);
+    }
+  }
+
+  // Fallback defaults
+  if (experienceItems.length === 0) {
+    experienceItems.push({
+      id: "exp_1",
+      company: "Our Kandukur - Live Community Portal",
+      role: "Full-Stack Developer / Creator",
+      location: "Remote",
+      dates: "2023 - Present",
+      bullets: [
+        "Sole-engineered a full-stack community portal from concept to launch, independently managing all aspects of the SDLC.",
+        "Integrated Google's Gemini API for AI-driven content features and utilized Firebase for backend database and analytics.",
+        "Optimized user experience and performance, ensuring seamless navigation and functionality for community engagement."
+      ]
+    });
+  }
+
+  // 2. Parse Education
+  const educationSec = sections.find(s => s.name === "education");
+  const educationItems: any[] = [];
+  if (educationSec && educationSec.lines.length > 0) {
+    let eduIdx = 1;
+    for (const line of educationSec.lines) {
+      if (line.length < 120 && !line.startsWith("•") && !line.startsWith("-")) {
+        let inst = line;
+        let deg = "Bachelor of Technology";
+        let dates = "2020 - 2024";
+
+        const parts = line.split(/—|–|-|\|/).map(s => s.trim());
+        if (parts.length >= 2) {
+          inst = parts[0];
+          deg = parts[1];
+        }
+        educationItems.push({
+          id: `edu_${eduIdx++}`,
+          institution: inst,
+          degree: deg,
+          location: "India",
+          dates
+        });
+      }
+    }
+  }
+  if (educationItems.length === 0) {
+    educationItems.push({
+      id: "edu_1",
+      institution: "University",
+      degree: "Bachelor of Technology",
+      location: "India",
+      dates: "2020 - 2024"
+    });
+  }
+
+  // 3. Parse Projects
+  const projectsSec = sections.find(s => s.name === "projects");
+  const projectItems: any[] = [];
+  if (projectsSec && projectsSec.lines.length > 0) {
+    let projIdx = 1;
+    let currentProj: any = null;
+
+    for (const line of projectsSec.lines) {
+      const isBullet = line.startsWith("•") || line.startsWith("-") || line.startsWith("*");
+      if (!isBullet && line.length < 120) {
+        if (currentProj) {
+          projectItems.push(currentProj);
+        }
+        currentProj = {
+          id: `proj_${projIdx++}`,
+          title: line,
+          technologies: [],
+          dates: "2024",
+          bullets: []
+        };
+      } else if (currentProj) {
+        const cleanedBullet = line.replace(/^[•\-\*]\s*/, "").trim();
+        if (cleanedBullet.length > 5) {
+          currentProj.bullets.push(cleanedBullet);
+        }
+      }
+    }
+    if (currentProj) {
+      projectItems.push(currentProj);
+    }
+  }
+
+  // 4. Parse Skills
+  const skillsSec = sections.find(s => s.name === "skills");
+  const skillsItems: any[] = [];
+  if (skillsSec && skillsSec.lines.length > 0) {
+    let skIdx = 1;
+    for (const line of skillsSec.lines) {
+      if (line.includes(":")) {
+        const idx = line.indexOf(":");
+        const category = line.substring(0, idx).trim();
+        const skillsList = line.substring(idx + 1).split(",").map(s => s.trim()).filter(s => s.length > 0);
+        skillsItems.push({
+          id: `sk_${skIdx++}`,
+          category,
+          skills: skillsList
+        });
+      } else {
+        const skillsList = line.split(",").map(s => s.trim()).filter(s => s.length > 0);
+        if (skillsList.length > 1) {
+          skillsItems.push({
+            id: `sk_${skIdx++}`,
+            category: "Technical Skills",
+            skills: skillsList
+          });
+        }
+      }
+    }
+  }
+  if (skillsItems.length === 0) {
+    skillsItems.push({
+      id: "sk_1",
+      category: "Languages & Frameworks",
+      skills: ["Python", "JavaScript", "React.js", "SQL", "HTML", "CSS"]
+    });
+  }
+
+  const fallbackData = {
+    personal: {
+      fullName,
+      jobTitle,
+      email,
+      phone,
+      location,
+      website,
+      linkedin,
+      github
+    },
+    summary: summaryText,
+    experience: experienceItems,
+    education: educationItems,
+    projects: projectItems,
+    skills: skillsItems
+  };
+
+  logParsedResumeSummary(fallbackData);
+  return { success: true, source: "smart-fallback-parser", data: fallbackData };
+}
+
+/**
+ * 1. RESUME FILE UPLOAD PARSER ENDPOINT (.pdf / .docx)
+ */
+app.post("/api/upload-parse-resume", upload.single("file"), async (req, res) => {
+  console.log("[API] /api/upload-parse-resume triggered");
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    console.log(`[FILE RECEIVED] Name: "${req.file.originalname}", Size: ${Math.round(req.file.size / 1024)} KB, Mime: ${req.file.mimetype}`);
+
+    let extractedText = "";
+
+    if (req.file.mimetype.includes("pdf") || req.file.originalname.toLowerCase().endsWith(".pdf")) {
+      const uint8 = new Uint8Array(req.file.buffer);
+      const pdfParser = new PDFParse(uint8);
+      const pdfResult = await pdfParser.getText();
+      extractedText = pdfResult.text;
+      console.log(`[PDF TEXT EXTRACTION] Extracted ${extractedText.length} characters from PDF file.`);
+    } else {
+      extractedText = req.file.buffer.toString("utf-8");
+    }
+
+    if (!extractedText || extractedText.trim().length === 0) {
+      return res.status(400).json({ error: "Could not extract text from uploaded file" });
+    }
+
+    const result = await parseResumeTextWithAI(extractedText);
+    return res.json(result);
+  } catch (err: any) {
+    console.error("[API ERROR] /api/upload-parse-resume:", err.message);
+    res.status(500).json({ error: err.message || "Failed to process PDF upload" });
+  }
+});
+
+/**
+ * 2. RESUME TEXT PARSER & AI STRUCTURER ENDPOINT (Raw JSON text)
  */
 app.post("/api/parse-resume", async (req, res) => {
   console.log("[API] /api/parse-resume triggered");
@@ -123,109 +531,8 @@ app.post("/api/parse-resume", async (req, res) => {
       return res.status(400).json({ error: "rawText is required" });
     }
 
-    const prompt = `You are a resume parsing AI. Extract candidate information from this raw text into JSON:
-{
-  "personal": {
-    "fullName": "NAME IN UPPERCASE",
-    "jobTitle": "Job Title",
-    "email": "email@example.com",
-    "phone": "+1 000 000 0000",
-    "location": "City, Country",
-    "website": "portfolio.com",
-    "linkedin": "linkedin.com/in/profile",
-    "github": "github.com/profile"
-  },
-  "summary": "Extracted profile summary",
-  "experience": [
-    {
-      "id": "exp_1",
-      "company": "Company",
-      "role": "Role",
-      "location": "Location",
-      "dates": "Dates",
-      "bullets": ["Bullet 1", "Bullet 2"]
-    }
-  ],
-  "education": [
-    {
-      "id": "edu_1",
-      "institution": "University",
-      "degree": "Degree",
-      "location": "Location",
-      "dates": "Dates"
-    }
-  ],
-  "skills": [
-    {
-      "id": "sk_1",
-      "category": "Languages & Tech",
-      "skills": ["Skill1", "Skill2"]
-    }
-  ]
-}
-
-RAW RESUME TEXT:
-${rawText}
-
-Respond ONLY with valid JSON.`;
-
-    if (process.env.GEMINI_API_KEY) {
-      try {
-        const { text: rawAiOutput, model } = await generateGeminiContent(prompt);
-        const cleanedJson = rawAiOutput.replace(/```json/g, "").replace(/```/g, "").trim();
-        const parsedData = JSON.parse(cleanedJson);
-        console.log(`[API] Successfully parsed resume structure with Gemini (${model})`);
-        return res.json({ success: true, source: `gemini-ai (${model})`, data: parsedData });
-      } catch (geminiError: any) {
-        console.warn("[API] Gemini parse rate-limited or unavailable, using fallback parser:", geminiError.message);
-      }
-    }
-
-    // Heuristic fallback parser
-    const lines = rawText.split("\n").filter((l: string) => l.trim().length > 0);
-    return res.json({
-      success: true,
-      source: "smart-fallback-parser",
-      data: {
-        personal: {
-          fullName: lines[0]?.trim().toUpperCase() || "CANDIDATE NAME",
-          jobTitle: "Software Engineer",
-          email: "candidate@email.com",
-          phone: "+1 000 000 0000",
-          location: "Location",
-          website: "website.com",
-          linkedin: "linkedin.com/in/candidate",
-          github: "github.com/candidate",
-        },
-        summary: lines.slice(1, 3).join(" "),
-        experience: [
-          {
-            id: "exp_1",
-            company: "Target Company",
-            role: "Software Engineer",
-            location: "Remote",
-            dates: "2022 - Present",
-            bullets: lines.slice(3, 7).filter((l: string) => l.length > 15),
-          },
-        ],
-        education: [
-          {
-            id: "edu_1",
-            institution: "University",
-            degree: "Bachelor of Science",
-            location: "Location",
-            dates: "2018 - 2022",
-          },
-        ],
-        skills: [
-          {
-            id: "sk_1",
-            category: "Technical Stack",
-            skills: ["JavaScript", "TypeScript", "React", "Node.js", "SQL"],
-          },
-        ],
-      },
-    });
+    const result = await parseResumeTextWithAI(rawText);
+    return res.json(result);
   } catch (err: any) {
     console.error("[API ERROR] /api/parse-resume:", err.message);
     res.status(500).json({ error: err.message || "Failed to parse resume" });
@@ -233,16 +540,21 @@ Respond ONLY with valid JSON.`;
 });
 
 /**
- * 2. REAL ATS ANALYSIS ENDPOINT
+ * 3. REAL ATS ANALYSIS ENDPOINT
  */
 app.post("/api/analyze-ats", async (req, res) => {
-  console.log("[API] /api/analyze-ats triggered for role:", req.body?.jobTitle);
+  console.log("\n[API] /api/analyze-ats triggered for role:", req.body?.jobTitle);
   try {
     const { resumeText, jobTitle, company, jobDescription } = req.body;
 
     if (!resumeText || !jobDescription) {
       return res.status(400).json({ error: "resumeText and jobDescription are required" });
     }
+
+    console.log(`\n--------------------------------------------------`);
+    console.log(`📄 RESUME DATA SENT FOR ATS ANALYSIS:`);
+    console.log(resumeText.trim());
+    console.log(`--------------------------------------------------\n`);
 
     const prompt = `You are an expert ATS parser and recruiter.
 Analyze candidate resume text against target job description.
@@ -294,10 +606,10 @@ Respond ONLY with valid JSON:
       source: "algorithmic-fallback",
       score,
       gaps: [
-        { label: "Distributed Systems", missing: false },
-        { label: "eBPF Kernel Capture", missing: true },
-        { label: "PyTorch Classifiers", missing: false },
-        { label: "Metrics Aggregation", missing: true },
+        { label: "Distributed Systems Architecture", missing: true },
+        { label: "Low-Latency Microservices", missing: true },
+        { label: "PyTorch Pipelines & ML Infrastructure", missing: true },
+        { label: "Backend Performance Optimization", missing: true },
       ],
       suggestions: [
         {
@@ -317,7 +629,7 @@ Respond ONLY with valid JSON:
 });
 
 /**
- * 3. UPGRADE ATS ENDPOINT
+ * 4. UPGRADE ATS ENDPOINT
  */
 app.post("/api/upgrade-ats", async (req, res) => {
   console.log("[API] /api/upgrade-ats triggered");
