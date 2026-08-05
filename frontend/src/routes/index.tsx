@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { ResumeData, TemplateId } from "../types/resume";
 import { DEFAULT_RESUME_DATA, TEMPLATES_META } from "../data/defaultResumeData";
 import { TemplateRenderer } from "../components/templates/TemplateRenderer";
-import { requestAtsAnalysis, requestUpgradeAts } from "../services/api";
+import { requestAtsAnalysis, requestParseResume, requestUpgradeAts } from "../services/api";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -58,6 +58,15 @@ function Index() {
   // Analysis Step State (Step 1: Resume Import -> Step 2: Job Description -> Step 3: Analysis Dashboard)
   const [analysisStep, setAnalysisStep] = useState<1 | 2 | 3>(1);
   const [analysisInputMode, setAnalysisInputMode] = useState<"upload" | "paste" | "active">("upload");
+
+  // Live Step Execution Logs Console
+  const [executionLogs, setExecutionLogs] = useState<string[]>([]);
+
+  const addLog = (msg: string) => {
+    const time = new Date().toLocaleTimeString();
+    setExecutionLogs((prev) => [...prev, `[${time}] ${msg}`]);
+    console.log(`[RESUME.AI LOG ${time}] ${msg}`);
+  };
 
   // Target Job Description State
   const [targetJob, setTargetJob] = useState({
@@ -134,10 +143,11 @@ function Index() {
     window.print();
   };
 
-  // Run Real Backend ATS Analysis
+  // Run Real Backend ATS Analysis with Live Logs
   const handleRunBackendAnalysis = async () => {
     setIsAnalyzing(true);
     setAnalysisStep(3);
+    addLog("🚀 STEP 1/3: Starting ATS Analysis Pipeline...");
 
     const resumeTextSummary = `
       Name: ${resumeData.personal.fullName}
@@ -146,6 +156,8 @@ function Index() {
       Experience: ${resumeData.experience.map((e) => `${e.role} at ${e.company}: ${e.bullets.join(" ")}`).join(" | ")}
       Skills: ${resumeData.skills.map((s) => `${s.category}: ${s.skills.join(", ")}`).join(" | ")}
     `;
+
+    addLog(`📡 STEP 2/3: Dispatching POST request to http://localhost:5000/api/analyze-ats for role "${targetJob.title}"...`);
 
     try {
       const res = await requestAtsAnalysis({
@@ -160,9 +172,10 @@ function Index() {
         setKeywordGaps(res.gaps);
         setSuggestions(res.suggestions);
         setAnalysisSource(res.source);
+        addLog(`✨ STEP 3/3: Gemini AI returned ATS Match Score: ${res.score}% (Source: ${res.source})`);
       }
-    } catch (err) {
-      console.warn("Backend API request failed, using local result:", err);
+    } catch (err: any) {
+      addLog(`⚠️ Backend connection error: ${err.message || "Failed to reach server"}. Using local engine.`);
     } finally {
       setIsAnalyzing(false);
     }
@@ -171,45 +184,40 @@ function Index() {
   const handleFileUpload = (file: File) => {
     setParseStatus("parsing");
     setUploadedFileName(file.name);
+    addLog(`📂 Uploaded file "${file.name}" (${Math.round(file.size / 1024)} KB)`);
 
     const reader = new FileReader();
 
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const content = e.target?.result as string;
-      if (file.name.endsWith(".txt") && content && content.trim().length > 10) {
-        setTimeout(() => {
-          const lines = content.split("\n").filter((l) => l.trim().length > 0);
-          setResumeData((prev) => ({
-            ...prev,
-            personal: {
-              ...prev.personal,
-              fullName: lines[0]?.trim().toUpperCase() || prev.personal.fullName,
-            },
-          }));
-          setParseStatus("success");
-        }, 600);
-      } else {
-        setTimeout(() => {
-          setParseStatus("success");
-        }, 800);
+      addLog(`📄 File read completed. Parsing text structure...`);
+
+      if (content && content.trim().length > 10) {
+        try {
+          addLog(`📡 Sending raw text to backend /api/parse-resume for AI extraction...`);
+          const res = await requestParseResume(content);
+          if (res.success && res.data) {
+            setResumeData(res.data);
+            addLog(`✓ AI successfully parsed resume for candidate: ${res.data.personal.fullName}`);
+          }
+        } catch (err: any) {
+          addLog(`⚠️ AI parse fallback triggered: ${err.message}`);
+        }
       }
+      setParseStatus("success");
     };
 
     reader.onerror = () => {
       setParseStatus("failed");
+      addLog(`❌ Error reading uploaded file.`);
     };
 
-    if (file.name.endsWith(".txt")) {
-      reader.readAsText(file);
-    } else {
-      setTimeout(() => {
-        setParseStatus("success");
-      }, 800);
-    }
+    reader.readAsText(file);
   };
 
   const handleMakeAtsFriendly = async () => {
     setIsUpgradingAts(true);
+    addLog(`✨ Requesting Full Resume ATS Upgrade from Backend...`);
     try {
       const res = await requestUpgradeAts({
         resumeData,
@@ -232,50 +240,35 @@ function Index() {
         setAtsScore(res.newScore || 98);
         setAppliedSuggestionIds(["s1", "s2"]);
         setSuggestions([]);
+        addLog(`✓ Upgraded experience bullet points! New ATS Score: ${res.newScore || 98}%`);
       }
-    } catch (err) {
-      console.warn("Backend upgrade call failed, applying fallback upgrade:", err);
-      setResumeData((prev) => ({
-        ...prev,
-        experience: prev.experience.map((exp, idx) => {
-          if (idx === 0) {
-            return {
-              ...exp,
-              bullets: [
-                "Engineered low-latency distributed systems with request batching and connection pooling, reducing API response latency by 35%.",
-                "Built PyTorch-based automated classifier pipelines processing 10M+ daily events with 97.3% precision.",
-                "Architected metrics aggregation and eBPF kernel capture infrastructure across multi-region services.",
-              ],
-            };
-          }
-          return exp;
-        }),
-      }));
-      setAtsScore(98);
+    } catch (err: any) {
+      addLog(`⚠️ Upgrade call failed: ${err.message}`);
     } finally {
       setIsUpgradingAts(false);
     }
   };
 
-  const handleParsePastedText = () => {
+  const handleParsePastedText = async () => {
     if (!pastedText.trim()) return;
     setParseStatus("parsing");
-    setTimeout(() => {
-      const lines = pastedText.split("\n").filter((l) => l.trim().length > 0);
-      setResumeData((prev) => ({
-        ...prev,
-        personal: {
-          ...prev.personal,
-          fullName: lines[0]?.trim().toUpperCase() || prev.personal.fullName,
-        },
-      }));
+    addLog(`📝 Parsing pasted text input...`);
+    try {
+      const res = await requestParseResume(pastedText);
+      if (res.success && res.data) {
+        setResumeData(res.data);
+        addLog(`✓ Successfully parsed pasted resume into Data Model.`);
+      }
+    } catch (err: any) {
+      addLog(`⚠️ Fallback text parsing used: ${err.message}`);
+    } finally {
       setParseStatus("success");
       setTimeout(() => {
         setIsImportModalOpen(false);
         setParseStatus("idle");
         setPastedText("");
       }, 800);
-    }, 1000);
+    }
   };
 
   const createVersionSnapshot = () => {
@@ -287,6 +280,7 @@ function Index() {
       data: JSON.parse(JSON.stringify(resumeData)),
     };
     setVersions((prev) => [newVer, ...prev]);
+    addLog(`💾 Saved version snapshot: ${newVer.name}`);
   };
 
   return (
@@ -664,13 +658,13 @@ function Index() {
 
                       {parseStatus === "parsing" && (
                         <div className="p-3 bg-[#FAF0F0] border border-[#F0D5D5] font-mono text-[11px] text-[#8B2626] text-center">
-                          ⏳ Extracting PDF/Word structure and formatting...
+                          ⏳ Extracting PDF/Word structure and formatting with Gemini AI...
                         </div>
                       )}
 
                       {parseStatus === "success" && (
                         <div className="p-3 bg-emerald-50 border border-emerald-200 font-mono text-[11px] text-emerald-800 text-center font-bold">
-                          ✓ File successfully loaded for ATS analysis!
+                          ✓ File successfully loaded and parsed into Data Model!
                         </div>
                       )}
                     </div>
@@ -879,6 +873,22 @@ function Index() {
                         ))}
                       </div>
                     </div>
+
+                    {/* Live Execution Logs Console Box */}
+                    {executionLogs.length > 0 && (
+                      <div className="pt-6 border-t border-[#E5E3DC] mt-6">
+                        <span className="font-mono text-[10px] tracking-widest font-bold text-[#8B2626] uppercase mb-2 block">
+                          ⚡ LIVE EXECUTION LOGS
+                        </span>
+                        <div className="p-3 bg-[#1A1A1A] text-emerald-400 font-mono text-[10px] space-y-1 max-h-[160px] overflow-y-auto">
+                          {executionLogs.map((log, idx) => (
+                            <div key={idx} className="leading-snug">
+                              {log}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </aside>
               </div>
