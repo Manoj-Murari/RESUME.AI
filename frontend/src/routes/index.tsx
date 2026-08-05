@@ -82,6 +82,9 @@ function Index() {
   // Active Template ID
   const [selectedTemplateId, setSelectedTemplateId] = useState<TemplateId>("jake-faang");
 
+  // Analysis Step State (Step 1: Resume Import -> Step 2: Job Description -> Step 3: Analysis Dashboard)
+  const [analysisStep, setAnalysisStep] = useState<1 | 2 | 3>(1);
+
   // Target Job Description State
   const [targetJob, setTargetJob] = useState({
     title: "Senior Backend / Systems Engineer",
@@ -99,7 +102,6 @@ function Index() {
   // Modals
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [importMode, setImportMode] = useState<"upload" | "paste" | "scratch">("upload");
   const [pastedText, setPastedText] = useState("");
   const [parseStatus, setParseStatus] = useState<"idle" | "parsing" | "failed" | "success">("idle");
 
@@ -450,65 +452,236 @@ function Index() {
           </>
         )}
 
-        {/* TAB 2: ANALYSIS VIEW */}
+        {/* TAB 2: STEP-BY-STEP ANALYSIS GUIDED FLOW */}
         {activeTab === "ANALYSIS" && (
-          <>
-            <div className="flex flex-1 flex-col items-center overflow-y-auto px-12 py-12">
-              <div className="w-full max-w-[800px] mb-8">
-                <TemplateRenderer
-                  templateId={selectedTemplateId}
-                  data={resumeData}
-                  editable={false}
-                />
+          <div className="flex-1 flex flex-col overflow-y-auto bg-[#FAF9F6]">
+            {/* Analysis Progress Stepper Bar */}
+            <div className="bg-white border-b border-[#E5E3DC] px-12 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-8">
+                {[
+                  { step: 1, label: "1. IMPORT RESUME" },
+                  { step: 2, label: "2. PASTE JOB DESCRIPTION" },
+                  { step: 3, label: "3. ATS ANALYSIS RESULTS" },
+                ].map((s) => (
+                  <button
+                    key={s.step}
+                    onClick={() => setAnalysisStep(s.step as any)}
+                    className={`font-mono text-[11px] font-bold tracking-wider uppercase flex items-center gap-2 ${
+                      analysisStep === s.step
+                        ? "text-[#8B2626]"
+                        : analysisStep > s.step
+                        ? "text-[#1A1A1A]"
+                        : "text-[#888888]"
+                    }`}
+                  >
+                    <span
+                      className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] ${
+                        analysisStep === s.step
+                          ? "bg-[#8B2626] text-white"
+                          : analysisStep > s.step
+                          ? "bg-[#1A1A1A] text-white"
+                          : "bg-[#E5E3DC] text-[#888888]"
+                      }`}
+                    >
+                      {s.step}
+                    </span>
+                    <span>{s.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
-            <aside className="w-[380px] border-l border-[#E5E3DC] bg-white flex flex-col justify-between overflow-y-auto p-8">
-              <div>
-                <span className="font-mono text-[10px] tracking-widest font-bold text-[#888888] uppercase mb-4 block">
-                  ATS MATCH SCORE
-                </span>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-baseline gap-1">
-                    <span className="font-display text-[48px] font-extrabold leading-none text-[#1A1A1A]">
-                      {score}
+            {/* STEP 1: IMPORT RESUME */}
+            {analysisStep === 1 && (
+              <div className="flex-1 flex items-center justify-center p-12">
+                <div className="bg-white border border-[#E5E3DC] w-full max-w-[640px] p-10 shadow-sm space-y-6">
+                  <div>
+                    <span className="font-mono text-[10px] tracking-widest font-bold uppercase text-[#8B2626] block mb-1">
+                      STEP 1 OF 3
                     </span>
-                    <span className="font-display text-[24px] font-bold text-[#1A1A1A]">%</span>
+                    <h2 className="font-display text-[24px] font-extrabold text-[#1A1A1A]">
+                      Import or Confirm Your Resume
+                    </h2>
+                    <p className="text-[13px] text-[#666666] mt-1">
+                      Upload your PDF/Word resume file or paste raw text below to analyze.
+                    </p>
                   </div>
-                  <span className="font-mono text-[9px] tracking-widest font-bold uppercase text-[#8B2626] bg-[#FAF0F0] border border-[#F0D5D5] px-3 py-1">
-                    EXCELLENT MATCH
-                  </span>
-                </div>
 
-                <div className="h-2 w-full bg-[#EAE8E3] overflow-hidden mb-8">
-                  <div
-                    className="h-full bg-[#8B2626] transition-all duration-700"
-                    style={{ width: `${score}%` }}
-                  />
-                </div>
-
-                <div className="pt-6 border-t border-[#E5E3DC]">
-                  <span className="font-mono text-[10px] tracking-widest font-bold text-[#888888] uppercase mb-4 block">
-                    KEYWORD GAPS
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {KEYWORDS.map((k) => (
-                      <span
-                        key={k.label}
-                        className={`font-mono text-[11px] px-3 py-1.5 border ${
-                          k.missing
-                            ? "bg-[#FAF0F0] border-[#F0D5D5] text-[#8B2626]"
-                            : "bg-white border-[#E5E3DC] text-[#666666]"
-                        }`}
+                  <div className="p-6 bg-[#FAF9F6] border border-[#E5E3DC] space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-[14px] text-[#1A1A1A] block">
+                          Active Resume: {resumeData.personal.fullName}
+                        </span>
+                        <span className="font-mono text-[11px] text-[#888888]">
+                          {resumeData.experience.length} experiences • {resumeData.skills.length} skill clusters
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setIsImportModalOpen(true)}
+                        className="border border-[#E5E3DC] bg-white text-[#1A1A1A] font-mono text-[10px] font-bold uppercase px-3 py-2 hover:border-[#888888]"
                       >
-                        {k.label}
-                      </span>
-                    ))}
+                        📄 Change File / Paste Text
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setAnalysisStep(2)}
+                    className="w-full bg-[#8B2626] text-white font-mono text-[11px] font-bold uppercase tracking-wider py-4 hover:bg-[#731F1F] transition-colors"
+                  >
+                    CONTINUE TO JOB DESCRIPTION →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: PASTE JOB DESCRIPTION */}
+            {analysisStep === 2 && (
+              <div className="flex-1 flex items-center justify-center p-12">
+                <div className="bg-white border border-[#E5E3DC] w-full max-w-[680px] p-10 shadow-sm space-y-6">
+                  <div>
+                    <span className="font-mono text-[10px] tracking-widest font-bold uppercase text-[#8B2626] block mb-1">
+                      STEP 2 OF 3
+                    </span>
+                    <h2 className="font-display text-[24px] font-extrabold text-[#1A1A1A]">
+                      Paste Target Job Description
+                    </h2>
+                    <p className="text-[13px] text-[#666666] mt-1">
+                      Paste the full job posting text to extract key skills and compute ATS match score.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="font-mono text-[9px] uppercase tracking-wider text-[#888888] mb-1 block">
+                          Job Title
+                        </label>
+                        <input
+                          type="text"
+                          value={targetJob.title}
+                          onChange={(e) => setTargetJob({ ...targetJob, title: e.target.value })}
+                          className="w-full bg-[#FAF9F6] border border-[#E5E3DC] p-3 text-[12px] font-bold text-[#1A1A1A] focus:outline-none focus:border-[#8B2626]"
+                        />
+                      </div>
+                      <div>
+                        <label className="font-mono text-[9px] uppercase tracking-wider text-[#888888] mb-1 block">
+                          Company Name
+                        </label>
+                        <input
+                          type="text"
+                          value={targetJob.company}
+                          onChange={(e) => setTargetJob({ ...targetJob, company: e.target.value })}
+                          className="w-full bg-[#FAF9F6] border border-[#E5E3DC] p-3 text-[12px] font-bold text-[#1A1A1A] focus:outline-none focus:border-[#8B2626]"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="font-mono text-[9px] uppercase tracking-wider text-[#888888] mb-1 block">
+                        Job Posting Requirements & Text
+                      </label>
+                      <textarea
+                        rows={7}
+                        value={targetJob.description}
+                        onChange={(e) => setTargetJob({ ...targetJob, description: e.target.value })}
+                        className="w-full bg-[#FAF9F6] border border-[#E5E3DC] p-4 text-[12px] text-[#1A1A1A] leading-relaxed focus:outline-none focus:border-[#8B2626]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <button
+                      onClick={() => setAnalysisStep(1)}
+                      className="border border-[#E5E3DC] text-[#666666] font-mono text-[11px] uppercase tracking-wider font-bold px-6 py-4 hover:text-[#1A1A1A]"
+                    >
+                      ← BACK
+                    </button>
+                    <button
+                      onClick={() => setAnalysisStep(3)}
+                      className="flex-1 bg-[#8B2626] text-white font-mono text-[11px] font-bold uppercase tracking-wider py-4 hover:bg-[#731F1F] transition-colors"
+                    >
+                      ✨ RUN ATS ANALYSIS →
+                    </button>
                   </div>
                 </div>
               </div>
-            </aside>
-          </>
+            )}
+
+            {/* STEP 3: ANALYSIS RESULTS DASHBOARD */}
+            {analysisStep === 3 && (
+              <div className="flex flex-1 overflow-hidden">
+                <div className="flex flex-1 flex-col items-center overflow-y-auto px-12 py-12">
+                  <div className="w-full max-w-[800px] mb-4 flex justify-between items-center">
+                    <button
+                      onClick={() => setAnalysisStep(2)}
+                      className="font-mono text-[10px] text-[#8B2626] font-bold uppercase hover:underline"
+                    >
+                      ← Modify Job Description
+                    </button>
+                    <span className="font-mono text-[10px] text-[#888888] uppercase">
+                      Target: {targetJob.title} @ {targetJob.company}
+                    </span>
+                  </div>
+
+                  <div className="w-full max-w-[800px]">
+                    <TemplateRenderer
+                      templateId={selectedTemplateId}
+                      data={resumeData}
+                      editable={false}
+                    />
+                  </div>
+                </div>
+
+                <aside className="w-[380px] border-l border-[#E5E3DC] bg-white flex flex-col justify-between overflow-y-auto p-8">
+                  <div>
+                    <span className="font-mono text-[10px] tracking-widest font-bold text-[#888888] uppercase mb-4 block">
+                      ATS MATCH SCORE
+                    </span>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-baseline gap-1">
+                        <span className="font-display text-[48px] font-extrabold leading-none text-[#1A1A1A]">
+                          {score}
+                        </span>
+                        <span className="font-display text-[24px] font-bold text-[#1A1A1A]">%</span>
+                      </div>
+                      <span className="font-mono text-[9px] tracking-widest font-bold uppercase text-[#8B2626] bg-[#FAF0F0] border border-[#F0D5D5] px-3 py-1">
+                        EXCELLENT MATCH
+                      </span>
+                    </div>
+
+                    <div className="h-2 w-full bg-[#EAE8E3] overflow-hidden mb-8">
+                      <div
+                        className="h-full bg-[#8B2626] transition-all duration-700"
+                        style={{ width: `${score}%` }}
+                      />
+                    </div>
+
+                    <div className="pt-6 border-t border-[#E5E3DC]">
+                      <span className="font-mono text-[10px] tracking-widest font-bold text-[#888888] uppercase mb-4 block">
+                        KEYWORD GAPS
+                      </span>
+                      <div className="flex flex-wrap gap-2">
+                        {KEYWORDS.map((k) => (
+                          <span
+                            key={k.label}
+                            className={`font-mono text-[11px] px-3 py-1.5 border ${
+                              k.missing
+                                ? "bg-[#FAF0F0] border-[#F0D5D5] text-[#8B2626]"
+                                : "bg-white border-[#E5E3DC] text-[#666666]"
+                            }`}
+                          >
+                            {k.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+            )}
+          </div>
         )}
 
         {/* TAB 3: VERSIONS VIEW */}
@@ -520,7 +693,7 @@ function Index() {
               </h2>
               <button
                 onClick={createVersionSnapshot}
-                className="bg-[#1A1A1A] text-white font-mono text-[11px] uppercase font-semibold px-4 py-2.5"
+                className="bg-[#1A1A1A] text-[#white] font-mono text-[11px] uppercase font-semibold px-4 py-2.5"
               >
                 + SAVE SNAPSHOT
               </button>
