@@ -204,27 +204,30 @@ function Index() {
     }
   };
 
+  // Mobile tab state for Step 3 (resume vs analysis panel)
+  const [mobileTab, setMobileTab] = useState<"resume" | "analysis">("resume");
+
   return (
     <div className="flex min-h-screen flex-col bg-[#FAF9F6] font-sans text-[#1A1A1A] antialiased">
       {/* Top Header Bar */}
-      <nav className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-[#E5E3DC] bg-white px-8 print:hidden">
-        <div className="flex items-center gap-8">
-          <span className="font-display text-[16px] font-extrabold tracking-wider uppercase text-[#1A1A1A]">
+      <nav className="sticky top-0 z-50 flex h-14 sm:h-16 items-center justify-between border-b border-[#E5E3DC] bg-white px-4 sm:px-8 print:hidden">
+        <div className="flex items-center gap-3 sm:gap-8 min-w-0">
+          <span className="font-display text-[15px] sm:text-[16px] font-extrabold tracking-wider uppercase text-[#1A1A1A] shrink-0">
             RESUME.AI
           </span>
-          <div className="h-4 w-px bg-[#E5E3DC]" />
-          <span className="font-mono text-[10px] uppercase tracking-widest font-bold text-[#8B2626]">
+          <div className="h-4 w-px bg-[#E5E3DC] hidden sm:block" />
+          <span className="font-mono text-[9px] sm:text-[10px] uppercase tracking-widest font-bold text-[#8B2626] hidden sm:block truncate">
             ✨ PRESENTATION MODE (ATS OPTIMIZER)
           </span>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
           {analysisStep === 3 && (
             <button
               onClick={handleExportPdf}
-              className="bg-[#1A1A1A] text-white font-mono text-[11px] tracking-wider uppercase font-semibold px-5 py-2.5 hover:bg-[#333333] transition-colors"
+              className="bg-[#1A1A1A] text-white font-mono text-[10px] sm:text-[11px] tracking-wider uppercase font-semibold px-3 sm:px-5 py-2 sm:py-2.5 hover:bg-[#333333] transition-colors"
             >
-              EXPORT PDF
+              EXPORT
             </button>
           )}
         </div>
@@ -262,26 +265,26 @@ function Index() {
 
       {/* TEMPLATE PICKER MODAL */}
       {isTemplateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 print:hidden">
-          <div className="bg-white border border-[#E5E3DC] w-full max-w-[800px] p-8 shadow-xl relative">
-            <div className="flex items-center justify-between mb-6 border-b border-[#E5E3DC] pb-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-xs p-0 sm:p-4 print:hidden">
+          <div className="bg-white border border-[#E5E3DC] w-full sm:max-w-[800px] p-5 sm:p-8 shadow-xl relative rounded-t-2xl sm:rounded-none">
+            <div className="flex items-center justify-between mb-4 sm:mb-6 border-b border-[#E5E3DC] pb-4">
               <div>
-                <h3 className="font-display text-[20px] font-extrabold text-[#1A1A1A]">
-                  Select Modular ATS Template
+                <h3 className="font-display text-[18px] sm:text-[20px] font-extrabold text-[#1A1A1A]">
+                  Select ATS Template
                 </h3>
-                <p className="text-[12px] text-[#666666]">
+                <p className="text-[12px] text-[#666666] hidden sm:block">
                   Every template renders your exact data model dynamically without data loss.
                 </p>
               </div>
               <button
                 onClick={() => setIsTemplateModalOpen(false)}
-                className="text-[#888888] hover:text-[#1A1A1A] font-mono text-[14px]"
+                className="text-[#888888] hover:text-[#1A1A1A] font-mono text-[20px] leading-none"
               >
                 ✕
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 max-h-[480px] overflow-y-auto pr-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-h-[60vh] sm:max-h-[480px] overflow-y-auto pr-1 sm:pr-2">
               {TEMPLATES_META.map((tmpl) => {
                 const isSelected = selectedTemplateId === tmpl.id;
                 return (
@@ -325,49 +328,54 @@ function Index() {
       {/* Main Guided Steps Flow */}
       <div className="flex-1 flex flex-col overflow-y-auto bg-[#FAF9F6]">
         {/* Analysis Progress Stepper Bar */}
-        <div className="bg-white border-b border-[#E5E3DC] px-12 py-4 flex items-center justify-between print:hidden">
-          <div className="flex items-center gap-8 mx-auto">
+        <div className="bg-white border-b border-[#E5E3DC] px-4 sm:px-8 py-3 sm:py-4 print:hidden">
+          <div className="flex items-center justify-between sm:justify-center sm:gap-8 w-full">
             {[
-              { step: 1, label: "1. IMPORT RESUME PDF/WORD" },
-              { step: 2, label: "2. PASTE JOB DESCRIPTION" },
-              { step: 3, label: "3. ATS ANALYSIS RESULTS" },
-            ].map((s) => (
-              <button
-                key={s.step}
-                onClick={() => {
-                  if (s.step <= analysisStep || (analysisStep === 3 && s.step <= 3)) {
-                    setAnalysisStep(s.step as any);
-                  }
-                }}
-                className={`font-mono text-[11px] font-bold tracking-wider uppercase flex items-center gap-2 transition-all ${
-                  analysisStep === s.step
-                    ? "text-[#8B2626]"
-                    : analysisStep > s.step
-                    ? "text-[#1A1A1A] hover:text-[#8B2626]"
-                    : "text-[#888888] cursor-not-allowed"
-                }`}
-              >
-                <span
-                  className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] ${
+              { step: 1, label: "IMPORT", labelFull: "1. IMPORT RESUME PDF/WORD" },
+              { step: 2, label: "JOB DESC", labelFull: "2. PASTE JOB DESCRIPTION" },
+              { step: 3, label: "RESULTS", labelFull: "3. ATS ANALYSIS RESULTS" },
+            ].map((s, i, arr) => (
+              <div key={s.step} className="flex items-center flex-1 sm:flex-initial">
+                <button
+                  onClick={() => {
+                    if (s.step <= analysisStep || (analysisStep === 3 && s.step <= 3)) {
+                      setAnalysisStep(s.step as any);
+                    }
+                  }}
+                  className={`font-mono text-[9px] sm:text-[11px] font-bold tracking-wider uppercase flex flex-col sm:flex-row items-center gap-1 sm:gap-2 transition-all ${
                     analysisStep === s.step
-                      ? "bg-[#8B2626] text-white"
+                      ? "text-[#8B2626]"
                       : analysisStep > s.step
-                      ? "bg-[#1A1A1A] text-white"
-                      : "bg-[#E5E3DC] text-[#888888]"
+                      ? "text-[#1A1A1A] hover:text-[#8B2626]"
+                      : "text-[#888888] cursor-not-allowed"
                   }`}
                 >
-                  {s.step}
-                </span>
-                <span>{s.label}</span>
-              </button>
+                  <span
+                    className={`h-5 w-5 sm:h-5 sm:w-5 rounded-full flex items-center justify-center text-[10px] shrink-0 ${
+                      analysisStep === s.step
+                        ? "bg-[#8B2626] text-white"
+                        : analysisStep > s.step
+                        ? "bg-[#1A1A1A] text-white"
+                        : "bg-[#E5E3DC] text-[#888888]"
+                    }`}
+                  >
+                    {s.step}
+                  </span>
+                  <span className="sm:hidden">{s.label}</span>
+                  <span className="hidden sm:inline">{s.labelFull}</span>
+                </button>
+                {i < arr.length - 1 && (
+                  <div className="flex-1 h-px bg-[#E5E3DC] mx-2 sm:hidden" />
+                )}
+              </div>
             ))}
           </div>
         </div>
 
         {/* STEP 1: IMPORT RESUME PDF / WORD / TEXT */}
         {analysisStep === 1 && (
-          <div className="flex-1 flex items-center justify-center p-12">
-            <div className="bg-white border border-[#E5E3DC] w-full max-w-[680px] p-10 shadow-sm space-y-6">
+          <div className="flex-1 flex items-start sm:items-center justify-center p-4 sm:p-12">
+            <div className="bg-white border border-[#E5E3DC] w-full max-w-[680px] p-5 sm:p-10 shadow-sm space-y-5 sm:space-y-6">
               <div>
                 <span className="font-mono text-[10px] tracking-widest font-bold uppercase text-[#8B2626] block mb-1">
                   STEP 1 OF 3
@@ -482,13 +490,13 @@ function Index() {
 
         {/* STEP 2: PASTE JOB DESCRIPTION */}
         {analysisStep === 2 && (
-          <div className="flex-1 flex items-center justify-center p-12">
-            <div className="bg-white border border-[#E5E3DC] w-full max-w-[680px] p-10 shadow-sm space-y-6">
+          <div className="flex-1 flex items-start sm:items-center justify-center p-4 sm:p-12">
+            <div className="bg-white border border-[#E5E3DC] w-full max-w-[680px] p-5 sm:p-10 shadow-sm space-y-5 sm:space-y-6">
               <div>
                 <span className="font-mono text-[10px] tracking-widest font-bold uppercase text-[#8B2626] block mb-1">
                   STEP 2 OF 3
                 </span>
-                <h2 className="font-display text-[24px] font-extrabold text-[#1A1A1A]">
+                <h2 className="font-display text-[22px] sm:text-[24px] font-extrabold text-[#1A1A1A]">
                   Paste Target Job Description
                 </h2>
                 <p className="text-[13px] text-[#666666] mt-1">
@@ -497,7 +505,7 @@ function Index() {
               </div>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="font-mono text-[9px] uppercase tracking-wider text-[#888888] mb-1 block">
                       Job Title
@@ -556,35 +564,67 @@ function Index() {
 
         {/* STEP 3: ANALYSIS RESULTS DASHBOARD */}
         {analysisStep === 3 && (
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-col flex-1 overflow-hidden">
+
+            {/* Mobile Tab Switcher */}
+            <div className="flex sm:hidden border-b border-[#E5E3DC] bg-white print:hidden">
+              <button
+                onClick={() => setMobileTab("resume")}
+                className={`flex-1 py-3 font-mono text-[10px] font-bold uppercase tracking-wider border-b-2 transition-colors ${
+                  mobileTab === "resume"
+                    ? "border-[#8B2626] text-[#8B2626]"
+                    : "border-transparent text-[#888888]"
+                }`}
+              >
+                📄 Resume
+              </button>
+              <button
+                onClick={() => setMobileTab("analysis")}
+                className={`flex-1 py-3 font-mono text-[10px] font-bold uppercase tracking-wider border-b-2 transition-colors ${
+                  mobileTab === "analysis"
+                    ? "border-[#8B2626] text-[#8B2626]"
+                    : "border-transparent text-[#888888]"
+                }`}
+              >
+                ✨ ATS Score
+              </button>
+            </div>
+
+            <div className="flex flex-1 overflow-hidden">
             {/* Left Side: Live Rendered Resume Template */}
-            <div className="flex flex-1 flex-col items-center overflow-y-auto px-12 py-12">
-              <div className="w-full max-w-[800px] mb-4 flex justify-between items-center print:hidden">
+            <div className={`${
+              mobileTab === "resume" ? "flex" : "hidden"
+            } sm:flex flex-1 flex-col items-center overflow-y-auto px-3 sm:px-12 py-5 sm:py-12`}>
+              <div className="w-full max-w-[800px] mb-4 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 print:hidden">
                 <button
                   onClick={() => setAnalysisStep(2)}
-                  className="font-mono text-[10px] text-[#8B2626] font-bold uppercase hover:underline"
+                  className="font-mono text-[10px] text-[#8B2626] font-bold uppercase hover:underline self-start"
                 >
                   ← Modify Job Description
                 </button>
-                <div className="flex items-center gap-2 font-mono text-[10px] text-[#888888] uppercase">
+                <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-[#888888] uppercase">
                   <span className="px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold">
                     Source: {analysisSource}
                   </span>
-                  <span>Target: {targetJob.title} @ {targetJob.company}</span>
+                  <span className="hidden sm:inline">Target: {targetJob.title} @ {targetJob.company}</span>
                 </div>
               </div>
 
-              <div className="w-full max-w-[800px]">
+              <div className="w-full max-w-[800px] overflow-x-auto">
+                <div className="min-w-[320px]">
                 <TemplateRenderer
                   templateId={selectedTemplateId}
                   data={resumeData}
                   editable={false}
                 />
+                </div>
               </div>
             </div>
 
             {/* Right Side: ATS Metrics, Keyword Gaps, AI Rewrites, Live Logs */}
-            <aside className="w-[380px] border-l border-[#E5E3DC] bg-white flex flex-col justify-between overflow-y-auto p-8 print:hidden">
+            <aside className={`${
+              mobileTab === "analysis" ? "flex" : "hidden"
+            } sm:flex w-full sm:w-[380px] border-t sm:border-t-0 sm:border-l border-[#E5E3DC] bg-white flex-col overflow-y-auto p-5 sm:p-8 print:hidden`}>
               <div>
                 <span className="font-mono text-[10px] tracking-widest font-bold text-[#888888] uppercase mb-4 block">
                   ATS MATCH SCORE
@@ -682,6 +722,7 @@ function Index() {
                 )}
               </div>
             </aside>
+            </div>
           </div>
         )}
       </div>
