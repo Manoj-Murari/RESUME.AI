@@ -6,24 +6,6 @@ import { TemplateRenderer } from "../components/templates/TemplateRenderer";
 import { requestAtsAnalysis, requestParseResume, requestParseResumeFile } from "../services/api";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "RESUME.AI — AI Resume Assistant & Modular ATS Template Engine" },
-      {
-        name: "description",
-        content:
-          "Tailor your resume to any job description with single source-of-truth data, real-time template switching, ATS match scoring, and AI rewrites.",
-      },
-      { property: "og:title", content: "RESUME.AI — Modular ATS Resume Engine" },
-      {
-        property: "og:description",
-        content:
-          "Single-source resume data model with live template switching and instant ATS optimization.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
-    ],
-  }),
   component: Index,
 });
 
