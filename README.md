@@ -390,7 +390,8 @@ This project is open source under the [MIT License](LICENSE).
 
 <div align="center">
 
-Built with ❤️ by **Murari Venkata Sai Manoj**
+Built with ❤️ by **Murari Jahnavi
+**
 
 [⭐ Star this repo](https://github.com/your-username/resume-ai) · [🐛 Report a Bug](https://github.com/your-username/resume-ai/issues) · [💡 Request a Feature](https://github.com/your-username/resume-ai/issues)
 
